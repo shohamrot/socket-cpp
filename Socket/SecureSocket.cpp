@@ -83,7 +83,7 @@ void ASecureSocket::SetUpCtxClient(SSLSocket& Socket)
          break;*/
 
       case OpenSSLProtocol::TLS_V1:
-         Socket.m_pMTHDSSL = const_cast<SSL_METHOD*>(TLSv1_client_method());
+         Socket.m_pMTHDSSL = const_cast<SSL_METHOD*>(TLSv1_2_client_method());
          break;
    }
    Socket.m_pCTXSSL = SSL_CTX_new(Socket.m_pMTHDSSL);
@@ -111,7 +111,7 @@ void ASecureSocket::SetUpCtxServer(SSLSocket& Socket)
          break;*/
 
       case OpenSSLProtocol::TLS_V1:
-         Socket.m_pMTHDSSL = const_cast<SSL_METHOD*>(TLSv1_server_method());
+         Socket.m_pMTHDSSL = const_cast<SSL_METHOD*>(TLSv1_2_server_method());
          break;
 
       case OpenSSLProtocol::SSL_V23:

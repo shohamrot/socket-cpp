@@ -6,6 +6,8 @@
 
 #ifdef OPENSSL
 #include "TCPSSLClient.h"
+#include <fcntl.h>
+
 
 CTCPSSLClient::CTCPSSLClient(const LogFnCallback oLogger,
                              const OpenSSLProtocol eSSLVersion,
@@ -50,8 +52,10 @@ bool CTCPSSLClient::Connect(const std::string& strServer, const std::string& str
 
       /* process SSL certificates */
       /* Load a client certificate into the SSL_CTX structure. */
+     
       if (!m_strSSLCertFile.empty())
       {
+         
          if (SSL_CTX_use_certificate_file(m_SSLConnectSocket.m_pCTXSSL,
             m_strSSLCertFile.c_str(), SSL_FILETYPE_PEM) <= 0)
          {
@@ -64,6 +68,8 @@ bool CTCPSSLClient::Connect(const std::string& strServer, const std::string& str
       /* Load trusted CA. Mandatory to verify server's certificate */
       if (!m_strCAFile.empty())
       {
+         m_oLog(StringFormat("m_strCAFile: %s",m_strCAFile.c_str()));
+
          if (!SSL_CTX_load_verify_locations(m_SSLConnectSocket.m_pCTXSSL, m_strCAFile.c_str(), nullptr))
          {
             if (m_eSettingsFlags & ENABLE_LOG)
@@ -71,6 +77,7 @@ bool CTCPSSLClient::Connect(const std::string& strServer, const std::string& str
 
             return false;
          }
+         
          SSL_CTX_set_verify_depth(m_SSLConnectSocket.m_pCTXSSL, 1);
       }
       /* Load a private-key into the SSL_CTX structure.
@@ -104,6 +111,7 @@ bool CTCPSSLClient::Connect(const std::string& strServer, const std::string& str
       SSL_set_fd(m_SSLConnectSocket.m_pSSL, m_SSLConnectSocket.m_SockFd);
 
       /* initiate the TLS/SSL handshake with an TLS/SSL server */
+
       int iResult = SSL_connect(m_SSLConnectSocket.m_pSSL);
       if (iResult > 0)
       {
@@ -111,25 +119,35 @@ bool CTCPSSLClient::Connect(const std::string& strServer, const std::string& str
          if (m_eSettingsFlags & ENABLE_LOG)
             m_oLog(StringFormat("[TCPSSLClient][Info] Connected with '%s' encryption.",
                              SSL_get_cipher(m_SSLConnectSocket.m_pSSL)));
-         
-         /*if (SSL_get_peer_certificate(m_SSLConnectSocket.m_pSSL) != nullptr)
+
+         X509 *cert = SSL_get_peer_certificate(m_SSLConnectSocket.m_pSSL);
+
+
+         if (cert != nullptr)
          {
-            if (SSL_get_verify_result(m_SSLConnectSocket.m_pSSL) == X509_V_OK)
+            int status = SSL_get_verify_result(m_SSLConnectSocket.m_pSSL);
+            if ( status == X509_V_OK)
             {
                if (m_eSettingsFlags & ENABLE_LOG)
                   m_oLog("client verification with SSL_get_verify_result() succeeded.");
             }
             else
             {
-               if (m_eSettingsFlags & ENABLE_LOG)
-                  m_oLog("client verification with SSL_get_verify_result() failed.\n");
-
+               if (m_eSettingsFlags & ENABLE_LOG){}
+                  m_oLog(StringFormat("client verification with SSL_get_verify_result() failed %d.\n",status));
+               close(m_SSLConnectSocket.m_SockFd);
                return false;
             }
          }
          else if (m_eSettingsFlags & ENABLE_LOG)
-            m_oLog("the peer certificate was not presented.");*/
+            m_oLog("the peer certificate was not presented.");
 
+         int flags = fcntl(m_SSLConnectSocket.m_SockFd, F_GETFL, 0);
+         if (fcntl(m_SSLConnectSocket.m_SockFd, F_SETFL, flags | O_NONBLOCK)) {
+            printf("could not fcntl\n");
+            close(m_SSLConnectSocket.m_SockFd);
+            return false;
+         }
          return true;
       }
       // under Windows it creates problems

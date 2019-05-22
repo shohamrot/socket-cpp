@@ -218,10 +218,12 @@ bool CTCPClient::Connect(const std::string& strServer, const std::string& strPor
       if (m_ConnectSocket < 0) // or == -1
          continue;
 
-      // connexion to the server
+   
       int iConRet = connect(m_ConnectSocket, pResPtr->ai_addr, pResPtr->ai_addrlen);
+      
       if (iConRet >= 0) // or != -1
       {
+
          /* Success */
          m_eStatus = CONNECTED;
          
@@ -233,6 +235,7 @@ bool CTCPClient::Connect(const std::string& strServer, const std::string& strPor
 
          return true;
       }
+
 
       close(m_ConnectSocket);
    }
